@@ -1,48 +1,41 @@
-# Especificación: Confirmación de Inscripción (Check-In)
+# Plan: Edición y Check-In de Equipos
 
 ## Objetivo
-Implementar la funcionalidad en el Backend para confirmar la inscripción de una pareja precargada (hacer el "check-in") antes del inicio del torneo. Esta acción cambiará el estado de la pareja de `"preloaded"` a `"checked_in"`.
+Implementar un endpoint genérico para la edición de datos de un equipo precargado y la gestión de su estado de inscripción (Check-In).
 
 ## Alcance Backend
+- Reemplazar endpoints específicos por uno genérico: `PUT /api/teams/:id`.
+- Implementar lógica inteligente para el campo `checked_in`.
+- Asegurar que la fecha de check-in sea persistente una vez realizada (idempotencia).
 
-### 1. Actualización de Swagger (`swagger.yaml`)
-Se deben documentar los endpoints expuestos para la confirmación y anulación de asistencia.
-- **Rutas:** 
-  - `PUT /api/teams/{id}/check-in`
-  - `PUT /api/teams/{id}/undo-check-in`
-- **Parámetros:** `id` (UUID del equipo) en el path.
-- **Respuesta (200 OK):** Objeto `TeamResponse` con su `status` actualizado (`"checked_in"` o `"preloaded"`) y el timestamp en `checkedInAt` (o `null` si se deshace).
-- **Casos de error:** `404` (equipo no existe), `500` (error interno de BD).
+## Contrato de API (Swagger)
 
-### 2. Actualización de Rutas del Backend (`team.routes.js`)
-Se añaden las rutas que enrutan la petición `PUT` hacia los métodos específicos del controlador:
-```javascript
-router.put('/:id/check-in', teamController.checkInTeam);
-router.put('/:id/undo-check-in', teamController.undoCheckInTeam);
-```
+**Endpoint:** `PUT /api/teams/{id}`
 
-### 3. Lógica del Controlador (`team.controller.js`)
-El método `checkInTeam` ejecutará:
-1. Extracción del `id` desde `req.params`.
-2. Búsqueda directa por clave principal: `Team.findByPk(id)`.
-3. Validaciones preventivas: si no existe, devolver status HTTP `404`.
-4. Mutación de estado en persistencia:
-   - `team.status = 'checked_in';`
-   - `team.checkedInAt = new Date();`
-5. Guardado síncrono en BD con `team.save()`.
-6. Retorno de la representación transformada vía el helper `mapTeamToPlayersPair`.
+**Request Body:**
+- `playerA`: `{ name, category }` (opcional)
+- `playerB`: `{ name, category }` (opcional)
+- `contactPhone`: `string` (opcional)
+- `checked_in`: `boolean` (opcional)
 
-El método `undoCheckInTeam` ejecutará la operación inversa:
-1. Extracción del `id` desde `req.params`.
-2. Búsqueda directa por clave principal: `Team.findByPk(id)`.
-3. Validaciones preventivas: si no existe, devolver status HTTP `404`.
-4. Mutación de estado en persistencia:
-   - `team.status = 'preloaded';`
-   - `team.checkedInAt = null;`
-5. Guardado síncrono en BD con `team.save()`.
-6. Retorno de la representación transformada vía el helper `mapTeamToPlayersPair`.
+**Lógica de Transición de Estados:**
+1. **De `false` a `true`**: 
+   - Cambiar `status` a `"checked_in"`.
+   - Establecer `checkedInAt` a la fecha/hora actual del servidor.
+2. **De `true` a `false`**:
+   - Cambiar `status` a `"preloaded"`.
+   - Limpiar `checkedInAt` (asignar `null`).
+3. **De `true` a `true`** (o ya era true):
+   - **No actualizar** `checkedInAt`. Mantener la fecha original del primer check-in.
 
-## Criterios de Aceptación Técnicos
-- [ ] La API expone correctamente los endpoints `PUT /api/teams/:id/check-in` y `PUT /api/teams/:id/undo-check-in`.
-- [ ] El contrato OpenAPI/Swagger documenta ambos endpoints.
-- [ ] Ejecutar el endpoint de anulación retorna `status: "preloaded"` y anula la fecha (`checkedInAt: null`).
+## Implementación Técnica
+- El controlador `team.controller.js` usará `findByPk` para obtener el estado actual antes de aplicar los cambios.
+- Se realizarán actualizaciones parciales de los objetos `playerA` y `playerB` si se envían en el body.
+- Las validaciones de unicidad de teléfono se mantienen.
+
+## Criterios de Aceptación
+- [x] Endpoint `PUT /api/teams/:id` implementado.
+- [x] Lógica de `checked_in` (true -> sets date, false -> clears date) verificada.
+- [x] Swagger actualizado con el nuevo contrato genérico.
+- [x] El campo `id` permanece como UUID.
+- [x] El teléfono se normaliza automáticamente al guardar (sin espacios).
