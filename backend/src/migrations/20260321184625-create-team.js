@@ -30,6 +30,10 @@ module.exports = {
         allowNull: false,
         unique: true
       },
+      checked_in: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      },
       checkedInAt: {
         type: Sequelize.DATE,
         allowNull: true
@@ -38,6 +42,7 @@ module.exports = {
         type: Sequelize.STRING,
         defaultValue: 'preloaded'
       },
+
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE
