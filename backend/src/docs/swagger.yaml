@@ -2,15 +2,17 @@ openapi: 3.0.0
 info:
   title: Padel Tournament API - Precarga
   version: 1.0.0
-  description: "API para la precarga manual de parejas participantes antes del inicio del torneo."
+  description: "API para la precarga manual de equipos participantes y gestión de check-in."
 servers:
   - url: http://localhost:3001
     description: Servidor de desarrollo local
 paths:
   /api/teams:
     post:
-      summary: Precargar una nueva pareja
-      description: "Recibe los datos exactos del formulario de alta manual (Jugador 1, Jugador 2 y Teléfono). Devuelve la pareja guardada o un error 400 si los datos son inválidos."
+      summary: Precargar un nuevo equipo
+      description: "Recibe los datos del formulario de alta manual. El equipo se crea por defecto con 'checked_in: false', estado 'preloaded' y sin fecha de check-in. Devuelve el equipo guardado o error si es inválido."
+
+
       tags:
         - Precarga
       requestBody:
@@ -18,115 +20,126 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PreloadTeamRequest'
+              $ref: "#/components/schemas/PreloadTeamRequest"
       responses:
-        '201':
-          description: "Pareja creada exitosamente."
+        "201":
+          description: "Equipo creado exitosamente."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TeamResponse'
-        '400':
-          description: "Error de validación (ej. Categoría fuera de rango 1-9, teléfono duplicado, campos faltantes)."
+                $ref: "#/components/schemas/TeamResponse"
+        "400":
+          description: "Error de validación (ej. Categoría fuera de rango, teléfono duplicado)."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     get:
-      summary: Obtener todas las parejas precargadas
-      description: "Devuelve el listado completo de parejas registradas en el sistema, ordenadas por fecha de creación descendente."
+      summary: Obtener todos los equipos precargados
+      description: "Devuelve el listado completo de equipos registrados."
       tags:
         - Precarga
       responses:
-        '200':
-          description: "Lista de parejas obtenida con éxito."
+        "200":
+          description: "Lista de equipos obtenida con éxito."
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/TeamResponse'
-        '500':
-          description: "Error interno del servidor."
+                  $ref: "#/components/schemas/TeamResponse"
+  /api/teams/{id}:
+    put:
+      summary: Actualizar un equipo (Edición o Check-in)
+      tags:
+        - Precarga
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerA:
+                  type: object
+                  properties:
+                    name: { type: string }
+                    category: { type: integer }
+                playerB:
+                  type: object
+                  properties:
+                    name: { type: string }
+                    category: { type: integer }
+                contactPhone: { type: string }
+                checked_in: { type: boolean }
+      responses:
+        "200":
+          description: "Equipo actualizado"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/TeamResponse"
 
 components:
   schemas:
     PreloadTeamRequest:
       type: object
-      required:
-        - playerA
-        - playerB
-        - contactPhone
+      required: [playerA, playerB, contactPhone]
       properties:
+        playerA: { $ref: "#/components/schemas/PlayerSchema" }
+        playerB: { $ref: "#/components/schemas/PlayerSchema" }
+        contactPhone: { type: string }
+      example:
         playerA:
-          type: object
-          properties:
-            name:
-              type: string
-              example: "Juan Pérez"
-            category:
-              type: integer
-              minimum: 1
-              maximum: 9
-              example: 5
+          name: "Juan Pérez"
+          category: 5
         playerB:
-          type: object
-          properties:
-            name:
-              type: string
-              example: "Martín López"
-            category:
-              type: integer
-              minimum: 1
-              maximum: 9
-              example: 4
-        contactPhone:
-          type: string
-          example: "11 5555 4444"
+          name: "Martín López"
+          category: 4
+        contactPhone: "1155554444"
+
+
+    PlayerSchema:
+      type: object
+      properties:
+        name: { type: string, example: "Juan Pérez" }
+        category: { type: integer, minimum: 1, maximum: 9, example: 5 }
 
     TeamResponse:
       type: object
       properties:
-        id:
-          type: string
-          format: uuid
+        id: { type: string, format: uuid }
+        playerA: { $ref: "#/components/schemas/PlayerSchema" }
+        playerB: { $ref: "#/components/schemas/PlayerSchema" }
+        contactPhone: { type: string }
+        status: { type: string, enum: [preloaded, checked_in] }
+        checked_in: { type: boolean, default: false }
+        checkedInAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      example:
+        id: "550e8400-e29b-41d4-a716-446655440000"
         playerA:
-          type: object
-          properties:
-            name:
-              type: string
-            category:
-              type: integer
+          name: "Juan Pérez"
+          category: 5
         playerB:
-          type: object
-          properties:
-            name:
-              type: string
-            category:
-              type: integer
-        contactPhone:
-          type: string
-        status:
-          type: string
-          enum: [preloaded, checked_in]
-        checkedInAt:
-          type: string
-          format: date-time
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
+          name: "Martín López"
+          category: 4
+        contactPhone: "1155554444"
+        status: "preloaded"
+        checked_in: false
+        checkedInAt: null
+        createdAt: "2026-03-21T18:00:00Z"
+        updatedAt: "2026-03-21T18:00:00Z"
 
-    
+
     ErrorResponse:
       type: object
       properties:
-        message:
-          type: string
-          example: "La categoría del jugador 1 debe estar entre 1 y 9."
+        message: { type: string, example: "Error message detail" }
