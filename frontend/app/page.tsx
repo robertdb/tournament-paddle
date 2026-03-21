@@ -10,7 +10,7 @@ export default function Home() {
               Tournament Paddle
             </p>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-              Gestión operativa para torneos de pádel de un solo día.
+              Gestión operativa para torneos de pádel de un único día.
             </h1>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
               El frontend ya tiene lista la primera pieza del flujo operativo:
