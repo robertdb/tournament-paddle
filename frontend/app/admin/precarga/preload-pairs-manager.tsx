@@ -1,28 +1,47 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
 import {
-  buildPlayersPair,
   CATEGORY_OPTIONS,
   EMPTY_PAIR_FORM,
   formatTimestamp,
   PairFieldErrors,
   PairFormState,
-  playersPairMatchesSearch,
   PlayersPair,
-  playersPairToFormState,
-  updatePlayersPair,
+  playersPairMatchesSearch,
   validatePairForm,
 } from "../shared/players-pairs";
+import { ApiError } from "@/lib/api/client";
+import { buildPlayersPairPayload } from "@/lib/api/teams";
+import { useCreateTeam, useTeams } from "@/lib/queries/teams";
+
+const EMPTY_PAIRS: PlayersPair[] = [];
+
+type Notice = {
+  tone: "error" | "success";
+  message: string;
+};
+
+function FieldMessage({ message }: { message?: string }) {
+  if (!message) {
+    return null;
+  }
+
+  return <p className="text-xs font-medium text-rose-600">{message}</p>;
+}
 
 export function PreloadPairsManager() {
-  const [pairs, setPairs] = useState<PlayersPair[]>([]);
+  const teamsQuery = useTeams();
+  const createTeam = useCreateTeam();
+
   const [form, setForm] = useState<PairFormState>(EMPTY_PAIR_FORM);
   const [errors, setErrors] = useState<PairFieldErrors>({});
   const [formError, setFormError] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [search, setSearch] = useState("");
+
+  const pairs = teamsQuery.data ?? EMPTY_PAIRS;
 
   const filteredPairs = useMemo(() => {
     return pairs.filter((pair) => playersPairMatchesSearch(pair, search));
@@ -32,14 +51,13 @@ export function PreloadPairsManager() {
     setForm(EMPTY_PAIR_FORM);
     setErrors({});
     setFormError("");
-    setEditingId(null);
   }
 
   function handleFieldChange(field: keyof PairFormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setFormError("");
-    setFeedback("");
+    setNotice(null);
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -48,56 +66,42 @@ export function PreloadPairsManager() {
     const { errors: nextErrors, formError: nextFormError } = validatePairForm(
       form,
       pairs,
-      editingId,
+      null,
     );
 
     if (Object.keys(nextErrors).length > 0 || nextFormError) {
       setErrors(nextErrors);
       setFormError(nextFormError);
-      setFeedback("");
+      setNotice(null);
       return;
     }
 
-    if (editingId) {
-      setPairs((current) =>
-        current.map((pair) =>
-          pair.id === editingId ? updatePlayersPair(pair, form) : pair,
-        ),
-      );
-      setFeedback("La pareja se actualizó correctamente.");
-    } else {
-      setPairs((current) => [buildPlayersPair(form), ...current]);
-      setFeedback("La pareja quedó precargada para el check-in.");
-    }
+    createTeam.mutate(buildPlayersPairPayload(form), {
+      onSuccess: () => {
+        resetForm();
+        setNotice({
+          tone: "success",
+          message: "La pareja quedó precargada correctamente en el backend.",
+        });
+      },
+      onError: (error) => {
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : "No se pudo crear la pareja. Intenta nuevamente.";
 
-    resetForm();
+        setNotice({
+          tone: "error",
+          message,
+        });
+      },
+    });
   }
 
-  function handleEdit(pair: PlayersPair) {
-    setForm(playersPairToFormState(pair));
-    setErrors({});
-    setFormError("");
-    setFeedback("");
-    setEditingId(pair.id);
-  }
-
-  function handleDelete(pair: PlayersPair) {
-    const confirmed = window.confirm(
-      `Vas a eliminar a ${pair.playerA.name} / ${pair.playerB.name}.`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setPairs((current) =>
-      current.filter((currentPair) => currentPair.id !== pair.id),
-    );
-    if (editingId === pair.id) {
-      resetForm();
-    }
-    setFeedback("La pareja se eliminó del estado mockeado.");
-  }
+  const teamsErrorMessage =
+    teamsQuery.error instanceof ApiError
+      ? teamsQuery.error.message
+      : "No se pudieron cargar las parejas desde el backend.";
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
@@ -111,8 +115,8 @@ export function PreloadPairsManager() {
               Precarga de parejas
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Registrá participantes antes del check-in. El estado es local y
-              sirve como mock funcional del flujo inicial.
+              Registrá participantes antes del check-in. Esta pantalla ya está
+              integrada con el backend de equipos.
             </p>
           </div>
         </div>
@@ -131,11 +135,7 @@ export function PreloadPairsManager() {
                 }
                 placeholder="Ej. Juan Pérez"
               />
-              {errors.playerAName ? (
-                <p className="text-xs font-medium text-rose-600">
-                  {errors.playerAName}
-                </p>
-              ) : null}
+              <FieldMessage message={errors.playerAName} />
             </label>
 
             <label className="space-y-2">
@@ -156,11 +156,7 @@ export function PreloadPairsManager() {
                   </option>
                 ))}
               </select>
-              {errors.playerACategory ? (
-                <p className="text-xs font-medium text-rose-600">
-                  {errors.playerACategory}
-                </p>
-              ) : null}
+              <FieldMessage message={errors.playerACategory} />
             </label>
           </div>
 
@@ -177,11 +173,7 @@ export function PreloadPairsManager() {
                 }
                 placeholder="Ej. Martín López"
               />
-              {errors.playerBName ? (
-                <p className="text-xs font-medium text-rose-600">
-                  {errors.playerBName}
-                </p>
-              ) : null}
+              <FieldMessage message={errors.playerBName} />
             </label>
 
             <label className="space-y-2">
@@ -202,11 +194,7 @@ export function PreloadPairsManager() {
                   </option>
                 ))}
               </select>
-              {errors.playerBCategory ? (
-                <p className="text-xs font-medium text-rose-600">
-                  {errors.playerBCategory}
-                </p>
-              ) : null}
+              <FieldMessage message={errors.playerBCategory} />
             </label>
           </div>
 
@@ -223,11 +211,7 @@ export function PreloadPairsManager() {
               inputMode="tel"
               placeholder="Ej. 11 5555 4444"
             />
-            {errors.contactPhone ? (
-              <p className="text-xs font-medium text-rose-600">
-                {errors.contactPhone}
-              </p>
-            ) : null}
+            <FieldMessage message={errors.contactPhone} />
           </label>
 
           {formError ? (
@@ -236,28 +220,26 @@ export function PreloadPairsManager() {
             </div>
           ) : null}
 
-          {feedback ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              {feedback}
+          {notice ? (
+            <div
+              className={`rounded-2xl border px-4 py-3 text-sm ${
+                notice.tone === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-rose-200 bg-rose-50 text-rose-700"
+              }`}
+            >
+              {notice.message}
             </div>
           ) : null}
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              disabled={createTeam.isPending}
+              className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
-              {editingId ? "Guardar cambios" : "Agregar pareja"}
+              {createTeam.isPending ? "Guardando..." : "Agregar pareja"}
             </button>
-            {editingId ? (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="inline-flex items-center justify-center rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Cancelar edición
-              </button>
-            ) : null}
           </div>
         </form>
       </section>
@@ -272,8 +254,8 @@ export function PreloadPairsManager() {
               Parejas cargadas
             </h3>
             <p className="mt-2 text-sm text-slate-600">
-              Estas parejas quedan listas para el futuro check-in, sin generar
-              todavía el torneo.
+              Estas parejas salen de `GET /api/teams` y quedan listas para el
+              futuro check-in.
             </p>
           </div>
 
@@ -293,7 +275,31 @@ export function PreloadPairsManager() {
           </div>
         </div>
 
-        {filteredPairs.length === 0 ? (
+        {teamsQuery.isPending ? (
+          <div className="mt-6 rounded-[28px] border border-dashed border-slate-300 bg-slate-50/80 px-6 py-12 text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
+              Cargando
+            </p>
+            <h4 className="mt-3 text-xl font-semibold text-slate-950">
+              Cargando parejas desde el backend
+            </h4>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Espera un momento mientras consultamos `/api/teams`.
+            </p>
+          </div>
+        ) : teamsQuery.isError ? (
+          <div className="mt-6 rounded-[28px] border border-rose-200 bg-rose-50 px-6 py-12 text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-rose-600">
+              Error de carga
+            </p>
+            <h4 className="mt-3 text-xl font-semibold text-rose-950">
+              No se pudieron obtener las parejas
+            </h4>
+            <p className="mt-3 text-sm leading-6 text-rose-700">
+              {teamsErrorMessage}
+            </p>
+          </div>
+        ) : filteredPairs.length === 0 ? (
           <div className="mt-6 rounded-[28px] border border-dashed border-slate-300 bg-slate-50/80 px-6 py-12 text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
               {pairs.length === 0 ? "Estado vacío" : "Sin coincidencias"}
@@ -305,8 +311,8 @@ export function PreloadPairsManager() {
             </h4>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               {pairs.length === 0
-                ? "Usá el formulario para registrar la primera dupla del torneo."
-                : "Probá con otro nombre o teléfono para encontrar la pareja."}
+                ? "Usa el formulario para registrar la primera dupla en el backend."
+                : "Prueba con otro nombre o teléfono para encontrar la pareja."}
             </p>
           </div>
         ) : (
@@ -361,23 +367,6 @@ export function PreloadPairsManager() {
                         {pair.contactPhone}
                       </p>
                     </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 lg:w-40">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(pair)}
-                      className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(pair)}
-                      className="inline-flex items-center justify-center rounded-full border border-rose-200 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
-                    >
-                      Eliminar
-                    </button>
                   </div>
                 </div>
               </li>
