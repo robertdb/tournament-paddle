@@ -31,8 +31,14 @@ app.get('/ping', (req, res) => {
     res.json({ status: 'success', message: 'Pong!' });
 });
 
-// Levantar el servidor y probar la BD
-app.listen(PORT, async () => {
-    console.log(`🚀 Servidor base corriendo en http://localhost:${PORT}`);
-    await testConnection();
-});
+// Exportar la app para testing
+module.exports = app;
+
+// Levantar el servidor y probar la BD (solo si no estamos en test)
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, async () => {
+        console.log(`🚀 Servidor base corriendo en http://localhost:${PORT}`);
+        await testConnection();
+    });
+}
+

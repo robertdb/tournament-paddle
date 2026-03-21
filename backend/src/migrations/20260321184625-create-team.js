@@ -5,34 +5,34 @@ module.exports = {
     await queryInterface.createTable('Teams', {
       id: {
         allowNull: false,
-        autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.UUID,
+        defaultValue: Sequelize.UUIDV4
       },
-      player1_name: {
+      playerA_name: {
         type: Sequelize.STRING,
         allowNull: false
       },
-      player1_category: {
+      playerA_category: {
         type: Sequelize.INTEGER,
         allowNull: false
       },
-      player2_name: {
+      playerB_name: {
         type: Sequelize.STRING,
         allowNull: false
       },
-      player2_category: {
+      playerB_category: {
         type: Sequelize.INTEGER,
         allowNull: false
       },
-      phone: {
+      contactPhone: {
         type: Sequelize.STRING,
         allowNull: false,
         unique: true
       },
-      checked_in: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
+      checkedInAt: {
+        type: Sequelize.DATE,
+        allowNull: true
       },
       status: {
         type: Sequelize.STRING,

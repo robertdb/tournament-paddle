@@ -35,7 +35,16 @@ module.exports = (sequelize) => {
     contactPhone: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true
+      unique: {
+        msg: 'El teléfono ya está registrado para otro equipo.'
+      },
+      set(value) {
+        // Normalización: Eliminar caracteres no numéricos para evitar duplicados "sucios"
+        if (value) {
+          const normalized = `${value}`.replace(/\D/g, '');
+          this.setDataValue('contactPhone', normalized);
+        }
+      }
     },
     status: {
       type: DataTypes.STRING,
@@ -43,6 +52,10 @@ module.exports = (sequelize) => {
       validate: {
         isIn: [['preloaded', 'checked_in']]
       }
+    },
+    checked_in: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
     },
     checkedInAt: {
       type: DataTypes.DATE,
