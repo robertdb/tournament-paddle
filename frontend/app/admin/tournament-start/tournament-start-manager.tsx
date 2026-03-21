@@ -2,9 +2,15 @@
 
 import { useMemo, useState } from "react";
 
+import { ApiError } from "@/lib/api/client";
+import {
+  buildCheckInPayload,
+  buildPlayersPairPayload,
+} from "@/lib/api/teams";
+import { useTeams, useUpdateTeam } from "@/lib/queries/teams";
+
 import {
   CATEGORY_OPTIONS,
-  createMockPreloadedPairs,
   EMPTY_PAIR_FORM,
   formatMatchFormat,
   formatTimestamp,
@@ -15,14 +21,22 @@ import {
   PlayersPair,
   playersPairToFormState,
   TournamentSettingsState,
-  updatePlayersPair,
   validatePairForm,
 } from "../shared/players-pairs";
+
+const EMPTY_PAIRS: PlayersPair[] = [];
 
 type Notice = {
   tone: "error" | "success";
   message: string;
 };
+
+type PendingAction =
+  | {
+      type: "edit" | "toggle";
+      pairId: string;
+    }
+  | null;
 
 function FieldMessage({ message }: { message?: string }) {
   if (!message) {
@@ -32,20 +46,26 @@ function FieldMessage({ message }: { message?: string }) {
   return <p className="text-xs font-medium text-rose-600">{message}</p>;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof ApiError ? error.message : fallback;
+}
+
 export function TournamentStartManager() {
-  const [pairs, setPairs] = useState<PlayersPair[]>(() =>
-    createMockPreloadedPairs(),
-  );
+  const teamsQuery = useTeams();
+  const updateTeam = useUpdateTeam();
+
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<PairFormState>(EMPTY_PAIR_FORM);
   const [errors, setErrors] = useState<PairFieldErrors>({});
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [settings, setSettings] = useState<TournamentSettingsState>({
     matchFormat: null,
   });
 
+  const pairs = teamsQuery.data ?? EMPTY_PAIRS;
   const checkedInCount = pairs.filter(
     (pair) => pair.status === "checked_in",
   ).length;
@@ -97,44 +117,72 @@ export function TournamentStartManager() {
       return;
     }
 
-    setPairs((current) =>
-      current.map((pair) =>
-        pair.id === editingId ? updatePlayersPair(pair, form) : pair,
-      ),
+    setPendingAction({ type: "edit", pairId: editingId });
+    setNotice(null);
+
+    updateTeam.mutate(
+      {
+        id: editingId,
+        payload: buildPlayersPairPayload(form),
+      },
+      {
+        onSuccess: () => {
+          clearEditor();
+          setNotice({
+            tone: "success",
+            message: "La pareja se actualizo correctamente en el backend.",
+          });
+        },
+        onError: (error) => {
+          setNotice({
+            tone: "error",
+            message: getErrorMessage(
+              error,
+              "No se pudieron guardar los cambios de la pareja.",
+            ),
+          });
+        },
+        onSettled: () => {
+          setPendingAction(null);
+        },
+      },
     );
-    clearEditor();
-    setNotice({
-      tone: "success",
-      message: "La pareja se actualizo correctamente en el estado mock.",
-    });
   }
 
   function handleTogglePresence(pair: PlayersPair) {
-    const nextStatus =
-      pair.status === "checked_in" ? "preloaded" : "checked_in";
-    const nextCheckedInAt =
-      nextStatus === "checked_in" ? new Date().toISOString() : null;
+    const isCheckingIn = pair.status !== "checked_in";
 
-    setPairs((current) =>
-      current.map((currentPair) =>
-        currentPair.id === pair.id
-          ? {
-              ...currentPair,
-              status: nextStatus,
-              checkedInAt: nextCheckedInAt,
-              updatedAt: new Date().toISOString(),
-            }
-          : currentPair,
-      ),
+    setPendingAction({ type: "toggle", pairId: pair.id });
+    setNotice(null);
+
+    updateTeam.mutate(
+      {
+        id: pair.id,
+        payload: buildCheckInPayload(isCheckingIn),
+      },
+      {
+        onSuccess: () => {
+          setNotice({
+            tone: "success",
+            message: isCheckingIn
+              ? `${pair.playerA.name} / ${pair.playerB.name} ya esta presente.`
+              : `${pair.playerA.name} / ${pair.playerB.name} volvio a pendiente.`,
+          });
+        },
+        onError: (error) => {
+          setNotice({
+            tone: "error",
+            message: getErrorMessage(
+              error,
+              "No se pudo actualizar el estado de la pareja.",
+            ),
+          });
+        },
+        onSettled: () => {
+          setPendingAction(null);
+        },
+      },
     );
-
-    setNotice({
-      tone: "success",
-      message:
-        nextStatus === "checked_in"
-          ? `${pair.playerA.name} / ${pair.playerB.name} ya esta presente.`
-          : `${pair.playerA.name} / ${pair.playerB.name} volvio a pendiente.`,
-    });
   }
 
   function handleMatchFormatChange(matchFormat: MatchFormat) {
@@ -166,6 +214,11 @@ export function TournamentStartManager() {
     });
   }
 
+  const teamsErrorMessage =
+    teamsQuery.error instanceof ApiError
+      ? teamsQuery.error.message
+      : "No se pudieron cargar las parejas desde el backend.";
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
       <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
@@ -179,8 +232,8 @@ export function TournamentStartManager() {
                 Check-in y configuracion
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Marca presencia, revisa la configuracion base del torneo y deja
-                listo el siguiente paso operativo.
+                Marca presencia, corrige datos si hace falta y deja listo el
+                siguiente paso operativo.
               </p>
             </div>
           </div>
@@ -190,14 +243,16 @@ export function TournamentStartManager() {
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">
                 Total
               </p>
-              <p className="mt-2 text-3xl font-semibold">{pairs.length}</p>
+              <p className="mt-2 text-3xl font-semibold">
+                {teamsQuery.isPending ? "..." : pairs.length}
+              </p>
             </div>
             <div className="rounded-2xl bg-emerald-50 px-4 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
                 Presentes
               </p>
               <p className="mt-2 text-3xl font-semibold text-emerald-950">
-                {checkedInCount}
+                {teamsQuery.isPending ? "..." : checkedInCount}
               </p>
             </div>
             <div className="rounded-2xl bg-amber-50 px-4 py-4">
@@ -205,7 +260,7 @@ export function TournamentStartManager() {
                 Pendientes
               </p>
               <p className="mt-2 text-3xl font-semibold text-amber-950">
-                {pendingCount}
+                {teamsQuery.isPending ? "..." : pendingCount}
               </p>
             </div>
           </div>
@@ -288,8 +343,8 @@ export function TournamentStartManager() {
                 {editingId ? "Editar pareja" : "Selecciona una pareja"}
               </h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                El check-in tambien permite corregir datos basicos antes del
-                inicio del torneo.
+                Los cambios de nombre, categoria y telefono se guardan con el
+                mismo recurso de teams.
               </p>
             </div>
           </div>
@@ -397,14 +452,19 @@ export function TournamentStartManager() {
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  disabled={updateTeam.isPending}
+                  className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
-                  Guardar cambios
+                  {pendingAction?.type === "edit" &&
+                  pendingAction.pairId === editingId
+                    ? "Guardando..."
+                    : "Guardar cambios"}
                 </button>
                 <button
                   type="button"
                   onClick={clearEditor}
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  disabled={updateTeam.isPending}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
                 >
                   Cancelar
                 </button>
@@ -434,14 +494,16 @@ export function TournamentStartManager() {
               Parejas precargadas
             </h3>
             <p className="mt-2 text-sm text-slate-600">
-              La data inicial simula la salida de precarga. Desde aqui puedes
-              confirmar presencia y ajustar datos antes del arranque.
+              La data se hidrata desde el backend de teams y permite confirmar
+              presencia sobre la precarga real.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:items-end">
             <div className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-              {pairs.length} {pairs.length === 1 ? "pareja" : "parejas"}
+              {teamsQuery.isPending
+                ? "Cargando parejas..."
+                : `${pairs.length} ${pairs.length === 1 ? "pareja" : "parejas"}`}
             </div>
             <label className="w-full sm:w-72">
               <span className="sr-only">Buscar pareja</span>
@@ -455,7 +517,32 @@ export function TournamentStartManager() {
           </div>
         </div>
 
-        {filteredPairs.length === 0 ? (
+        {teamsQuery.isPending ? (
+          <div className="mt-6 rounded-[28px] border border-dashed border-slate-300 bg-slate-50/80 px-6 py-12 text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
+              Cargando
+            </p>
+            <h4 className="mt-3 text-xl font-semibold text-slate-950">
+              Estamos consultando las parejas del backend
+            </h4>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              En cuanto responda `GET /api/teams`, se actualiza el listado para
+              operar el check-in.
+            </p>
+          </div>
+        ) : teamsQuery.isError ? (
+          <div className="mt-6 rounded-[28px] border border-rose-200 bg-rose-50 px-6 py-12 text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-rose-600">
+              Error de carga
+            </p>
+            <h4 className="mt-3 text-xl font-semibold text-rose-950">
+              No se pudo obtener la precarga del torneo
+            </h4>
+            <p className="mt-3 text-sm leading-6 text-rose-700">
+              {teamsErrorMessage}
+            </p>
+          </div>
+        ) : filteredPairs.length === 0 ? (
           <div className="mt-6 rounded-[28px] border border-dashed border-slate-300 bg-slate-50/80 px-6 py-12 text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
               {pairs.length === 0 ? "Estado vacio" : "Sin coincidencias"}
@@ -467,7 +554,7 @@ export function TournamentStartManager() {
             </h4>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               {pairs.length === 0
-                ? "Cuando exista integracion, aqui se hidrataran desde la precarga."
+                ? "Carga parejas desde precarga para verlas disponibles en esta etapa."
                 : "Prueba con otro nombre o telefono para encontrarlas."}
             </p>
           </div>
@@ -475,6 +562,9 @@ export function TournamentStartManager() {
           <ul className="mt-6 space-y-4">
             {filteredPairs.map((pair) => {
               const isCheckedIn = pair.status === "checked_in";
+              const isTogglingPair =
+                pendingAction?.type === "toggle" &&
+                pendingAction.pairId === pair.id;
 
               return (
                 <li
@@ -540,18 +630,26 @@ export function TournamentStartManager() {
                       <button
                         type="button"
                         onClick={() => handleTogglePresence(pair)}
-                        className={`inline-flex items-center justify-center rounded-full px-4 py-3 text-sm font-semibold transition ${
+                        disabled={updateTeam.isPending}
+                        className={`inline-flex items-center justify-center rounded-full px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                           isCheckedIn
                             ? "border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
                             : "bg-slate-950 text-white hover:bg-slate-800"
                         }`}
                       >
-                        {isCheckedIn ? "Quitar presente" : "Dar presente"}
+                        {isTogglingPair
+                          ? isCheckedIn
+                            ? "Quitando..."
+                            : "Confirmando..."
+                          : isCheckedIn
+                            ? "Quitar presente"
+                            : "Dar presente"}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleEdit(pair)}
-                        className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                        disabled={updateTeam.isPending}
+                        className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
                       >
                         Editar
                       </button>

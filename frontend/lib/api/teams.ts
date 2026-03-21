@@ -14,6 +14,10 @@ export type PlayersPairPayload = {
   contactPhone: string;
 };
 
+export type UpdateTeamPayload = Partial<PlayersPairPayload> & {
+  checked_in?: boolean;
+};
+
 export function buildPlayersPairPayload(
   form: PairFormState,
 ): PlayersPairPayload {
@@ -30,6 +34,12 @@ export function buildPlayersPairPayload(
   };
 }
 
+export function buildCheckInPayload(isCheckedIn: boolean): UpdateTeamPayload {
+  return {
+    checked_in: isCheckedIn,
+  };
+}
+
 export function getTeams() {
   return apiRequest<PlayersPair[]>("/api/teams");
 }
@@ -37,6 +47,13 @@ export function getTeams() {
 export function createTeam(payload: PlayersPairPayload) {
   return apiRequest<PlayersPair>("/api/teams", {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateTeam(id: string, payload: UpdateTeamPayload) {
+  return apiRequest<PlayersPair>(`/api/teams/${id}`, {
+    method: "PUT",
     body: JSON.stringify(payload),
   });
 }
