@@ -1,6 +1,30 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
+// Configuración común desde .env
+const dbConfig = {
+  username: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT || 5432,
+  dialect: 'postgres'
+};
+
+// Configuración para sequelize-cli (usa la misma config para dev y prod)
+module.exports = {
+  development: dbConfig,
+  production: dbConfig,
+  test: {
+    username: 'postgres',
+    password: 'postgres',
+    database: 'database_test',
+    host: '127.0.0.1',
+    dialect: 'postgres'
+  }
+};
+
+// Instancia de Sequelize para usar en la app
 const sequelize = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
@@ -9,7 +33,7 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     dialect: 'postgres',
     port: process.env.DB_PORT || 5432,
-    logging: false, // Set to console.log to see SQL queries
+    logging: false,
   }
 );
 
@@ -22,4 +46,5 @@ const testConnection = async () => {
   }
 };
 
-module.exports = { sequelize, testConnection };
+module.exports.sequelize = sequelize;
+module.exports.testConnection = testConnection;
