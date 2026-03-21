@@ -105,7 +105,7 @@ echo "🔧 Actualizando BACKEND..."
 cd backend
 
 echo "📦 Instalando dependencias backend..."
-npm ci
+npm install
 
 # Reiniciar backend con PM2
 echo "🔄 Reiniciando backend..."
@@ -124,7 +124,7 @@ echo "🎨 Actualizando FRONTEND..."
 cd ../frontend
 
 echo "📦 Instalando dependencias frontend..."
-npm ci
+npm install
 
 # Build del frontend
 echo "🏗️  Building frontend..."
