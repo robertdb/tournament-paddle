@@ -12,15 +12,12 @@ import { useTeams, useUpdateTeam } from "@/lib/queries/teams";
 import {
   CATEGORY_OPTIONS,
   EMPTY_PAIR_FORM,
-  formatMatchFormat,
   formatTimestamp,
-  MatchFormat,
   PairFieldErrors,
   PairFormState,
   playersPairMatchesSearch,
   PlayersPair,
   playersPairToFormState,
-  TournamentSettingsState,
   validatePairForm,
 } from "../shared/players-pairs";
 
@@ -61,9 +58,6 @@ export function TournamentStartManager() {
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-  const [settings, setSettings] = useState<TournamentSettingsState>({
-    matchFormat: null,
-  });
 
   const pairs = teamsQuery.data ?? EMPTY_PAIRS;
   const checkedInCount = pairs.filter(
@@ -185,20 +179,7 @@ export function TournamentStartManager() {
     );
   }
 
-  function handleMatchFormatChange(matchFormat: MatchFormat) {
-    setSettings({ matchFormat });
-    setNotice(null);
-  }
-
   function handleStartTournament() {
-    if (!settings.matchFormat) {
-      setNotice({
-        tone: "error",
-        message: "Selecciona primero el formato de partidos antes de iniciar.",
-      });
-      return;
-    }
-
     if (checkedInCount === 0) {
       setNotice({
         tone: "error",
@@ -210,7 +191,7 @@ export function TournamentStartManager() {
 
     setNotice({
       tone: "success",
-      message: `Inicio mock listo: ${checkedInCount} parejas presentes con formato ${formatMatchFormat(settings.matchFormat)}.`,
+      message: `Inicio mock listo: ${checkedInCount} parejas presentes.`,
     });
   }
 
@@ -229,11 +210,11 @@ export function TournamentStartManager() {
                 Dia del torneo
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                Check-in y configuracion
+                Check-in del torneo
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Marca presencia, corrige datos si hace falta y deja listo el
-                siguiente paso operativo.
+                Marca presencia, corrige datos si hace falta y deja lista la
+                apertura del torneo.
               </p>
             </div>
           </div>
@@ -262,53 +243,6 @@ export function TournamentStartManager() {
               <p className="mt-2 text-3xl font-semibold text-amber-950">
                 {teamsQuery.isPending ? "..." : pendingCount}
               </p>
-            </div>
-          </div>
-
-          <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                  Settings
-                </p>
-                <h3 className="mt-2 text-lg font-semibold text-slate-950">
-                  Partidos
-                </h3>
-              </div>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                {formatMatchFormat(settings.matchFormat)}
-              </span>
-            </div>
-
-            <div className="mt-4 grid gap-3">
-              {[
-                { value: "4_games" as const, label: "A 4 games" },
-                { value: "6_games" as const, label: "A 6 games" },
-              ].map((option) => {
-                const isActive = settings.matchFormat === option.value;
-
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleMatchFormatChange(option.value)}
-                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
-                      isActive
-                        ? "border-slate-950 bg-slate-950 text-white"
-                        : "border-slate-200 bg-white text-slate-800 hover:border-slate-300"
-                    }`}
-                  >
-                    <span className="text-sm font-semibold">
-                      {option.label}
-                    </span>
-                    <span
-                      className={`h-3 w-3 rounded-full ${
-                        isActive ? "bg-amber-300" : "bg-slate-200"
-                      }`}
-                    />
-                  </button>
-                );
-              })}
             </div>
           </div>
 

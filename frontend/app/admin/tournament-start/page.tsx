@@ -5,8 +5,7 @@ import { TournamentStartManager } from "./tournament-start-manager";
 
 export const metadata: Metadata = {
   title: "Tournament Start",
-  description:
-    "Confirmacion de llegada y settings previos al inicio del torneo.",
+  description: "Confirmacion de llegada y control de check-in del torneo.",
 };
 
 export default function TournamentStartPage() {
