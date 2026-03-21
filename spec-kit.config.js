@@ -1,0 +1,1 @@
+<content for spec-kit.config.js>
