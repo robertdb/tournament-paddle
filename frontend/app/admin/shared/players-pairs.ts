@@ -165,7 +165,7 @@ export function validatePairForm(
       (pair) =>
         pair.id !== editingId &&
         buildPairSignature(pair.playerA.name, pair.playerB.name) ===
-          buildPairSignature(playerAName, playerBName),
+        buildPairSignature(playerAName, playerBName),
     )
   ) {
     formError = "Ya existe una pareja cargada con esos dos jugadores.";

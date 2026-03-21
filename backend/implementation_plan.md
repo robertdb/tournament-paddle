@@ -1,45 +1,69 @@
-# Plan de Implementación Backend: MVP Escalonado con Validaciones
+# Plan de Implementación Backend: Precarga de Parejas
 
-Este plan detalla los pasos exactos que seguiremos. Al finalizar cada paso, me detendré y te haré las preguntas indicadas en la sección **"Validación con el usuario"** para asegurar que estamos alineados antes de escribir el código del siguiente paso.
+Este plan se centra exclusivamente en la funcionalidad de **Precarga de Parejas**. El objetivo es permitir que el administrador registre, liste, edite y elimine parejas (equipos) antes del inicio del torneo, alineando el backend con la estructura de datos que utiliza el frontend.
 
----
-
-## Paso 1: Setup Base y Contrato de API (Swagger)
-
-**Objetivos del paso:**
-- Inicializar el proyecto Node.js con Express.
-- Instalar dependencias esenciales (Express, Cors, Multer, Swagger UI).
-- Crear un archivo `swagger.yaml` documentando un endpoint de prueba: `POST /api/teams/upload`.
-- Levantar el servidor y mostrar el Swagger funcionando.
-
-**Validación con el usuario (Preguntas que te haré al terminar este paso):**
-1. ¿El archivo a subir será un CSV, un Excel (.xlsx) o un JSON?
-2. ¿Cuáles son las columnas/datos exactos que enviará ese archivo (ej: Nombre Jugador 1, Nombre Jugador 2, Nivel Promedio, Teléfono)?
-3. ¿Quieres que la API devuelva un resumen de lo que leyó del archivo antes de guardarlo, o que lo guarde directamente?
+> [!IMPORTANT]
+> **Regla de Oro:** Todo el código debe estar dentro de la carpeta `backend/`. El contrato de la API debe coincidir con el tipo `PlayersPair` usado por el frontend en `players-pairs.ts`.
 
 ---
 
-## Paso 2: Modelo de Datos y ORM (PostgreSQL + Sequelize)
+## Paso 1: Alineación del Modelo de Datos (Sequelize)
 
-**Objetivos del paso:**
-*Solo avanzaremos aquí tras aprobar el Paso 1.*
-- Configurar la conexión a la base de datos PostgreSQL usando Sequelize.
-- Crear el modelo `Team` (`team.model.js`) basándonos en los campos confirmados en el Paso 1.
-- Crear el script/lógica real que toma el archivo subido usando Multer, lo parsea y guarda cada registro en la base de datos usando el ORM.
+**Objetivos:**
+- Modificar el modelo `Team` para que coincida con los campos de negocio de la precarga.
+- Campos requeridos en la tabla `Teams`:
+  - `id`: UUID (para que el frontend pueda manejar IDs consistentes).
+  - `playerA_name`: String.
+  - `playerA_category`: Integer (1-9).
+  - `playerB_name`: String.
+  - `playerB_category`: Integer (1-9).
+  - `contactPhone`: String (Único).
+  - `status`: String (Default: 'preloaded').
+  - `checkedInAt`: DateTime (Nullable).
 
-**Validación con el usuario (Preguntas que te haré al terminar este paso):**
-1. ¿Vamos a permitir que se suba el archivo varias veces pisando los datos anteriores, o cada carga suma equipos nuevos?
-2. ¿Hay algún dato adicional (ej: validación de nivel máximo/mínimo) que deba fallar si el archivo viene mal armado?
+**Validación:**
+1. ¿La migración refleja exactamente estos campos?
 
 ---
 
-## Paso 3: Endpoints de Consulta y Check-in
+## Paso 2: Contrato API (Swagger)
 
-**Objetivos del paso:**
-*Solo avanzaremos aquí tras aprobar el Paso 2.*
-- Crear endpoint `GET /api/teams` para listar los equipos cargados.
-- Crear endpoint `PATCH /api/teams/:id/check-in` para que el admin confirme qué equipos llegaron el día del torneo.
+**Objetivos:**
+- Actualizar `swagger.yaml` para reflejar la estructura anidada o plana que el frontend espera. 
+- *Decisión:* Se recomienda usar un JSON plano para la persistencia pero que el controlador pueda recibir/enviar la estructura de `PlayersPair` (con objetos `playerA` y `playerB`) para facilitar el consumo del frontend.
+- Documentar:
+  - `POST /api/teams`: Crear pareja.
+  - `GET /api/teams`: Listar todas.
+  - `PUT /api/teams/:id`: Editar pareja.
+  - `DELETE /api/teams/:id`: Eliminar pareja.
 
-**Validación con el usuario (Preguntas que te haré al terminar este paso):**
-1. Para listar los equipos, ¿necesitas filtrarlos por estado (confirmados vs no confirmados) o enviamos todos juntos en el mismo listado?
-2. Una vez que confirmamos los check-ins, ¿el diseño del endpoint temporal cumple las expectativas para pasar a la siguiente fase (Generación de Grupos y Cuadros)?
+---
+
+## Paso 3: Implementación del Controlador (CRUD Precarga)
+
+**Objetivos:**
+- Desarrollar `src/controllers/team.controller.js` con las 4 operaciones básicas.
+- **Mapeo de Datos:** El controlador debe ser capaz de transformar la respuesta del modelo (plana) al formato que espera el frontend (anidada).
+- **Validaciones de Negocio:**
+  - Impedir duplicados por `contactPhone`.
+  - Impedir duplicados por combinación de nombres (normalizados).
+  - Validar categorías 1-9.
+
+---
+
+## Paso 4: Rutas y Middleware de Validación
+
+**Objetivos:**
+- Configurar `src/routes/team.routes.js`.
+- (Opcional pero recomendado) Implementar un middleware de validación con `express-validator` o Joi para asegurar que los datos que entran al `POST` y `PUT` son correctos antes de llegar al controlador.
+
+---
+
+## Paso 5: Prueba de Integración Local
+
+**Objetivos:**
+- Levantar el servidor y validar con una herramienta como Postman/Thunder Client o la UI de Swagger.
+- Asegurar que el `GET /api/teams` devuelve exactamente lo que el mock `MOCK_PRELOADED_PAIRS` contiene en su estructura.
+
+**Resultado Final Esperado:** Un backend robusto que soporta todo el ciclo de vida de la "Precarga", listo para ser conectado al frontend real.
+

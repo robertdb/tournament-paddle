@@ -1,0 +1,132 @@
+openapi: 3.0.0
+info:
+  title: Padel Tournament API - Precarga
+  version: 1.0.0
+  description: "API para la precarga manual de parejas participantes antes del inicio del torneo."
+servers:
+  - url: http://localhost:3001
+    description: Servidor de desarrollo local
+paths:
+  /api/teams:
+    post:
+      summary: Precargar una nueva pareja
+      description: "Recibe los datos exactos del formulario de alta manual (Jugador 1, Jugador 2 y Teléfono). Devuelve la pareja guardada o un error 400 si los datos son inválidos."
+      tags:
+        - Precarga
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreloadTeamRequest'
+      responses:
+        '201':
+          description: "Pareja creada exitosamente."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '400':
+          description: "Error de validación (ej. Categoría fuera de rango 1-9, teléfono duplicado, campos faltantes)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Obtener todas las parejas precargadas
+      description: "Devuelve el listado completo de parejas registradas en el sistema, ordenadas por fecha de creación descendente."
+      tags:
+        - Precarga
+      responses:
+        '200':
+          description: "Lista de parejas obtenida con éxito."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamResponse'
+        '500':
+          description: "Error interno del servidor."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    PreloadTeamRequest:
+      type: object
+      required:
+        - playerA
+        - playerB
+        - contactPhone
+      properties:
+        playerA:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Juan Pérez"
+            category:
+              type: integer
+              minimum: 1
+              maximum: 9
+              example: 5
+        playerB:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Martín López"
+            category:
+              type: integer
+              minimum: 1
+              maximum: 9
+              example: 4
+        contactPhone:
+          type: string
+          example: "11 5555 4444"
+
+    TeamResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        playerA:
+          type: object
+          properties:
+            name:
+              type: string
+            category:
+              type: integer
+        playerB:
+          type: object
+          properties:
+            name:
+              type: string
+            category:
+              type: integer
+        contactPhone:
+          type: string
+        status:
+          type: string
+          enum: [preloaded, checked_in]
+        checkedInAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "La categoría del jugador 1 debe estar entre 1 y 9."
