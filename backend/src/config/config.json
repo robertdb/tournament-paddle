@@ -1,9 +1,10 @@
 {
   "development": {
-    "username": "postgres",
-    "password": "postgres",
-    "database": "tournament_paddle",
-    "host": "127.0.0.1",
+    "username": "${DB_USER}",
+    "password": "${DB_PASSWORD}",
+    "database": "${DB_NAME}",
+    "host": "${DB_HOST}",
+    "port": "${DB_PORT}",
     "dialect": "postgres"
   },
   "test": {
@@ -14,7 +15,11 @@
     "dialect": "postgres"
   },
   "production": {
-    "use_env_variable": "DATABASE_URL",
+    "username": "${DB_USER}",
+    "password": "${DB_PASSWORD}",
+    "database": "${DB_NAME}",
+    "host": "${DB_HOST}",
+    "port": "${DB_PORT}",
     "dialect": "postgres"
   }
 }
