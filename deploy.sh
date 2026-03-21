@@ -2,20 +2,54 @@
 
 # Deploy script para servidor remoto vía SSH
 # Este script se ejecuta DESDE TU MÁQUINA LOCAL
-# Uso: ./deploy.sh [branch]
+# Uso: ./deploy.sh [dev|prod] [branch]
 
 set -e
 
-BRANCH=${1:-main}
-SSH_HOST="rf_ovh"
-REMOTE_DIR="/var/www/html/tournament-paddle-dev"
+# Determinar ambiente
+ENV=${1:-dev}
+BRANCH=${2:-main}
+
+# Configuración por ambiente (mismo servidor, diferentes carpetas)
+case $ENV in
+  prod)
+    SSH_HOST="rf_ovh"
+    REMOTE_DIR="/var/www/html/tournament-paddle"
+    BACKEND_NAME="paddle-api-prod"
+    FRONTEND_NAME="paddle-frontend-prod"
+    BACKEND_PORT="4001"
+    FRONTEND_PORT="4000"
+    DOMAIN="paddle-pdl.ramfactoryarg.com"
+    ;;
+  dev)
+    SSH_HOST="rf_ovh"
+    REMOTE_DIR="/var/www/html/tournament-paddle-dev"
+    BACKEND_NAME="paddle-api"
+    FRONTEND_NAME="paddle-frontend"
+    BACKEND_PORT="3001"
+    FRONTEND_PORT="3000"
+    DOMAIN="paddle-pdl-dev.ramfactoryarg.com"
+    ;;
+  *)
+    echo "❌ Error: Ambiente inválido '$ENV'"
+    echo "Uso: ./deploy.sh [dev|prod] [branch]"
+    echo "Ejemplos:"
+    echo "  ./deploy.sh dev"
+    echo "  ./deploy.sh prod"
+    echo "  ./deploy.sh dev develop"
+    echo "  ./deploy.sh prod main"
+    exit 1
+    ;;
+esac
+
 BACKUP_DIR="/var/www/html/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 echo "🚀 Iniciando deploy remoto..."
+echo "🏷️  Ambiente: $ENV"
 echo "📌 Branch: $BRANCH"
-echo "�️  Servidor: $SSH_HOST"
-echo "�� Directorio: $REMOTE_DIR"
+echo "🖥️  Servidor: $SSH_HOST"
+echo "📂 Directorio: $REMOTE_DIR"
 echo ""
 
 # Verificar que la config SSH existe
@@ -75,11 +109,11 @@ npm ci
 
 # Reiniciar backend con PM2
 echo "🔄 Reiniciando backend..."
-if pm2 describe paddle-api > /dev/null 2>&1; then
-    pm2 restart paddle-api --update-env
+if pm2 describe $BACKEND_NAME > /dev/null 2>&1; then
+    pm2 restart $BACKEND_NAME --update-env
 else
-    echo "⚠️  Proceso paddle-api no existe, creándolo..."
-    PORT=3001 pm2 start server.js --name paddle-api
+    echo "⚠️  Proceso $BACKEND_NAME no existe, creándolo..."
+    PORT=$BACKEND_PORT pm2 start server.js --name $BACKEND_NAME
 fi
 
 echo "✅ Backend actualizado"
@@ -98,11 +132,11 @@ npm run build
 
 # Reiniciar frontend con PM2
 echo "🔄 Reiniciando frontend..."
-if pm2 describe paddle-frontend > /dev/null 2>&1; then
-    pm2 restart paddle-frontend --update-env
+if pm2 describe $FRONTEND_NAME > /dev/null 2>&1; then
+    pm2 restart $FRONTEND_NAME --update-env
 else
-    echo "⚠️  Proceso paddle-frontend no existe, creándolo..."
-    pm2 start npm --name paddle-frontend -- start
+    echo "⚠️  Proceso $FRONTEND_NAME no existe, creándolo..."
+    PORT=$FRONTEND_PORT pm2 start npm --name $FRONTEND_NAME -- start
 fi
 
 echo "✅ Frontend actualizado"
@@ -125,14 +159,14 @@ echo "📌 Branch: $BRANCH"
 echo "📌 Backup: $BACKUP_DIR/backup_${TIMESTAMP}_\${CURRENT_COMMIT}.tar.gz"
 echo ""
 echo "🌐 Servicios:"
-echo "   - https://paddle-pdl-dev.ramfactoryarg.com"
+echo "   - https://$DOMAIN"
 echo ""
 echo "📝 Ver logs:"
-echo "   ssh $SSH_HOST 'pm2 logs paddle-api'"
-echo "   ssh $SSH_HOST 'pm2 logs paddle-frontend'"
+echo "   ssh $SSH_HOST 'pm2 logs $BACKEND_NAME'"
+echo "   ssh $SSH_HOST 'pm2 logs $FRONTEND_NAME'"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ENDSSH
 
 echo ""
 echo "✅ Deploy remoto completado desde tu máquina local"
-echo "🌐 Verificá: https://paddle-pdl-dev.ramfactoryarg.com"
+echo "🌐 Verificá: https://$DOMAIN"

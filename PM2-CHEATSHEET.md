@@ -4,6 +4,23 @@ Comandos que realmente vas a usar para gestionar `paddle-api` y `paddle-frontend
 
 ---
 
+## 🌍 Deploy por ambiente
+
+```bash
+# Deploy a DEV (default)
+./deploy.sh dev
+./deploy.sh dev main
+
+# Deploy a PROD
+./deploy.sh prod
+./deploy.sh prod main
+
+# Deploy a DEV desde otra branch
+./deploy.sh dev develop
+```
+
+---
+
 ## 📊 Ver estado
 
 ```bash
