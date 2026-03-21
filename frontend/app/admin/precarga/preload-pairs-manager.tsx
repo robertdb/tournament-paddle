@@ -1,198 +1,41 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
-type PlayerCategory = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-
-type PreloadedPair = {
-  id: string;
-  contactPhone: string;
-  playerA: {
-    name: string;
-    category: PlayerCategory;
-  };
-  playerB: {
-    name: string;
-    category: PlayerCategory;
-  };
-  status: "preloaded";
-  createdAt: string;
-  updatedAt: string;
-};
-
-type FormState = {
-  playerAName: string;
-  playerACategory: string;
-  playerBName: string;
-  playerBCategory: string;
-  contactPhone: string;
-};
-
-type FieldErrors = Partial<Record<keyof FormState, string>>;
-
-const CATEGORY_OPTIONS: PlayerCategory[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-
-const EMPTY_FORM: FormState = {
-  playerAName: "",
-  playerACategory: "",
-  playerBName: "",
-  playerBCategory: "",
-  contactPhone: "",
-};
-
-function normalizeName(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-function normalizePhone(value: string) {
-  return value.replace(/\D/g, "");
-}
-
-function formatName(value: string) {
-  return value.trim().replace(/\s+/g, " ");
-}
-
-function buildPairSignature(playerAName: string, playerBName: string) {
-  return [normalizeName(playerAName), normalizeName(playerBName)].sort().join("|");
-}
-
-function validateForm(
-  form: FormState,
-  pairs: PreloadedPair[],
-  editingId: string | null,
-) {
-  const errors: FieldErrors = {};
-  let formError = "";
-
-  const playerAName = formatName(form.playerAName);
-  const playerBName = formatName(form.playerBName);
-  const normalizedPlayerA = normalizeName(playerAName);
-  const normalizedPlayerB = normalizeName(playerBName);
-  const normalizedPhone = normalizePhone(form.contactPhone);
-  const playerACategory = Number(form.playerACategory);
-  const playerBCategory = Number(form.playerBCategory);
-
-  if (!playerAName) {
-    errors.playerAName = "Ingresá el nombre del jugador 1.";
-  }
-
-  if (!playerBName) {
-    errors.playerBName = "Ingresá el nombre del jugador 2.";
-  }
-
-  if (
-    playerAName &&
-    playerBName &&
-    normalizedPlayerA &&
-    normalizedPlayerA === normalizedPlayerB
-  ) {
-    errors.playerAName = "Los jugadores deben ser distintos.";
-    errors.playerBName = "Los jugadores deben ser distintos.";
-  }
-
-  if (!Number.isInteger(playerACategory) || playerACategory < 1 || playerACategory > 9) {
-    errors.playerACategory = "Elegí una categoría entre 1 y 9.";
-  }
-
-  if (!Number.isInteger(playerBCategory) || playerBCategory < 1 || playerBCategory > 9) {
-    errors.playerBCategory = "Elegí una categoría entre 1 y 9.";
-  }
-
-  if (!form.contactPhone.trim()) {
-    errors.contactPhone = "Ingresá un teléfono de contacto.";
-  } else if (!normalizedPhone) {
-    errors.contactPhone = "Ingresá un teléfono válido.";
-  }
-
-  if (
-    normalizedPhone &&
-    pairs.some(
-      (pair) => pair.id !== editingId && normalizePhone(pair.contactPhone) === normalizedPhone,
-    )
-  ) {
-    errors.contactPhone = "Ya existe una pareja cargada con ese teléfono.";
-  }
-
-  if (
-    normalizedPlayerA &&
-    normalizedPlayerB &&
-    pairs.some(
-      (pair) =>
-        pair.id !== editingId &&
-        buildPairSignature(pair.playerA.name, pair.playerB.name) ===
-          buildPairSignature(playerAName, playerBName),
-    )
-  ) {
-    formError = "Ya existe una pareja cargada con esos dos jugadores.";
-  }
-
-  return { errors, formError };
-}
-
-function formatTimestamp(timestamp: string) {
-  return new Intl.DateTimeFormat("es-AR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(timestamp));
-}
-
-function buildPair(form: FormState): PreloadedPair {
-  const now = new Date().toISOString();
-
-  return {
-    id: crypto.randomUUID(),
-    contactPhone: form.contactPhone.trim(),
-    playerA: {
-      name: formatName(form.playerAName),
-      category: Number(form.playerACategory) as PlayerCategory,
-    },
-    playerB: {
-      name: formatName(form.playerBName),
-      category: Number(form.playerBCategory) as PlayerCategory,
-    },
-    status: "preloaded",
-    createdAt: now,
-    updatedAt: now,
-  };
-}
+import {
+  buildPlayersPair,
+  CATEGORY_OPTIONS,
+  EMPTY_PAIR_FORM,
+  formatTimestamp,
+  PairFieldErrors,
+  PairFormState,
+  playersPairMatchesSearch,
+  PlayersPair,
+  playersPairToFormState,
+  updatePlayersPair,
+  validatePairForm,
+} from "../shared/players-pairs";
 
 export function PreloadPairsManager() {
-  const [pairs, setPairs] = useState<PreloadedPair[]>([]);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const [pairs, setPairs] = useState<PlayersPair[]>([]);
+  const [form, setForm] = useState<PairFormState>(EMPTY_PAIR_FORM);
+  const [errors, setErrors] = useState<PairFieldErrors>({});
   const [formError, setFormError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const filteredPairs = useMemo(() => {
-    const query = normalizeName(search);
-
-    if (!query) {
-      return pairs;
-    }
-
-    return pairs.filter((pair) => {
-      const combined = [
-        pair.playerA.name,
-        pair.playerB.name,
-        pair.contactPhone,
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return combined.includes(query);
-    });
+    return pairs.filter((pair) => playersPairMatchesSearch(pair, search));
   }, [pairs, search]);
 
   function resetForm() {
-    setForm(EMPTY_FORM);
+    setForm(EMPTY_PAIR_FORM);
     setErrors({});
     setFormError("");
     setEditingId(null);
   }
 
-  function handleFieldChange(field: keyof FormState, value: string) {
+  function handleFieldChange(field: keyof PairFormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setFormError("");
@@ -202,7 +45,7 @@ export function PreloadPairsManager() {
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const { errors: nextErrors, formError: nextFormError } = validateForm(
+    const { errors: nextErrors, formError: nextFormError } = validatePairForm(
       form,
       pairs,
       editingId,
@@ -218,47 +61,27 @@ export function PreloadPairsManager() {
     if (editingId) {
       setPairs((current) =>
         current.map((pair) =>
-          pair.id === editingId
-            ? {
-                ...pair,
-                contactPhone: form.contactPhone.trim(),
-                playerA: {
-                  name: formatName(form.playerAName),
-                  category: Number(form.playerACategory) as PlayerCategory,
-                },
-                playerB: {
-                  name: formatName(form.playerBName),
-                  category: Number(form.playerBCategory) as PlayerCategory,
-                },
-                updatedAt: new Date().toISOString(),
-              }
-            : pair,
+          pair.id === editingId ? updatePlayersPair(pair, form) : pair,
         ),
       );
       setFeedback("La pareja se actualizó correctamente.");
     } else {
-      setPairs((current) => [buildPair(form), ...current]);
+      setPairs((current) => [buildPlayersPair(form), ...current]);
       setFeedback("La pareja quedó precargada para el check-in.");
     }
 
     resetForm();
   }
 
-  function handleEdit(pair: PreloadedPair) {
-    setForm({
-      playerAName: pair.playerA.name,
-      playerACategory: String(pair.playerA.category),
-      playerBName: pair.playerB.name,
-      playerBCategory: String(pair.playerB.category),
-      contactPhone: pair.contactPhone,
-    });
+  function handleEdit(pair: PlayersPair) {
+    setForm(playersPairToFormState(pair));
     setErrors({});
     setFormError("");
     setFeedback("");
     setEditingId(pair.id);
   }
 
-  function handleDelete(pair: PreloadedPair) {
+  function handleDelete(pair: PlayersPair) {
     const confirmed = window.confirm(
       `Vas a eliminar a ${pair.playerA.name} / ${pair.playerB.name}.`,
     );
@@ -267,7 +90,9 @@ export function PreloadPairsManager() {
       return;
     }
 
-    setPairs((current) => current.filter((currentPair) => currentPair.id !== pair.id));
+    setPairs((current) =>
+      current.filter((currentPair) => currentPair.id !== pair.id),
+    );
     if (editingId === pair.id) {
       resetForm();
     }
@@ -290,9 +115,6 @@ export function PreloadPairsManager() {
               sirve como mock funcional del flujo inicial.
             </p>
           </div>
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
-            Sin backend
-          </span>
         </div>
 
         <form className="mt-6 space-y-5" onSubmit={handleSubmit}>

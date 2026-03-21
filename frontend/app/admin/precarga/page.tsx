@@ -28,12 +28,20 @@ export default function PreloadPairsPage() {
               </p>
             </div>
 
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10"
-            >
-              Volver al inicio
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/admin/tournament-start"
+                className="inline-flex items-center justify-center rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+              >
+                Abrir tournament start
+              </Link>
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10"
+              >
+                Volver al inicio
+              </Link>
+            </div>
           </div>
         </div>
 

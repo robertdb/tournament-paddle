@@ -22,27 +22,30 @@ Agregar una ruta de administración previa a la inicialización del torneo para 
   - Deja espacio para luego incorporar `/admin/check-in`, `/admin/resultados` y otras vistas internas.
 
 ## Modelo de datos inicial
-Se propone modelar una pareja con una estructura similar a esta:
+Se propone unificar el dominio en un tipo base compartido para todo el flujo:
 
 ```ts
 type PlayerCategory = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+type PlayersPairStatus = "preloaded" | "checked_in";
 
-type PreloadedPair = {
+type Player = {
+  name: string;
+  category: PlayerCategory;
+};
+
+type PlayersPair = {
   id: string;
   contactPhone: string;
-  playerA: {
-    name: string;
-    category: PlayerCategory;
-  };
-  playerB: {
-    name: string;
-    category: PlayerCategory;
-  };
-  status: "preloaded";
+  playerA: Player;
+  playerB: Player;
+  status: PlayersPairStatus;
+  checkedInAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
 ```
+
+`PlayersPair` debe ser el tipo canónico compartido entre features. En la etapa de precarga se usa con `status: "preloaded"` y `checkedInAt: null`.
 
 ## Reglas de negocio
 - Debe haber exactamente 2 jugadores por pareja.
@@ -57,6 +60,7 @@ type PreloadedPair = {
 - La precarga no implica check-in.
 - La precarga no genera grupos ni cuadro.
 - La pareja precargada queda disponible para el flujo posterior de reconfirmación.
+- El shape compartido de pareja debe mantenerse compatible con check-in y etapas posteriores.
 
 ## UX propuesta
 ### Vista principal

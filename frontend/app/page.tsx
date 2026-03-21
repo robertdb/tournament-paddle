@@ -41,18 +41,26 @@ export default function Home() {
               Acceso rápido
             </p>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight text-amber-950">
-              Abrir precarga
+              Abrir vistas operativas
             </h2>
             <p className="mt-4 text-sm leading-7 text-amber-900/80">
-              Entrá a la vista de administración para empezar a registrar
-              parejas en estado mockeado.
+              Entra a la precarga para cargar parejas o salta directo al
+              check-in del dia del torneo con datos mockeados.
             </p>
-            <Link
-              href="/admin/precarga"
-              className="mt-6 inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Ir a /admin/precarga
-            </Link>
+            <div className="mt-6 flex flex-col gap-3">
+              <Link
+                href="/admin/precarga"
+                className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Ir a /admin/precarga
+              </Link>
+              <Link
+                href="/admin/tournament-start"
+                className="inline-flex items-center justify-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-white"
+              >
+                Ir a /admin/tournament-start
+              </Link>
+            </div>
           </aside>
         </section>
       </div>
