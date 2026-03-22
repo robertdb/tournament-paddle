@@ -3,11 +3,33 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --dashboard-night: #020617;
+  --dashboard-ink: #0f172a;
+  --dashboard-navy: #111827;
+  --dashboard-slate: #94a3b8;
+  --dashboard-ice: #e2e8f0;
+  --dashboard-sky: #38bdf8;
+  --dashboard-blue: #3b82f6;
+  --dashboard-blue-deep: #2563eb;
+  --dashboard-upper-green: #11a928;
+  --dashboard-lower-green: #0d8c31;
+  --dashboard-amber: #f59e0b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-dashboard-night: var(--dashboard-night);
+  --color-dashboard-ink: var(--dashboard-ink);
+  --color-dashboard-navy: var(--dashboard-navy);
+  --color-dashboard-slate: var(--dashboard-slate);
+  --color-dashboard-ice: var(--dashboard-ice);
+  --color-dashboard-sky: var(--dashboard-sky);
+  --color-dashboard-blue: var(--dashboard-blue);
+  --color-dashboard-blue-deep: var(--dashboard-blue-deep);
+  --color-dashboard-upper-green: var(--dashboard-upper-green);
+  --color-dashboard-lower-green: var(--dashboard-lower-green);
+  --color-dashboard-amber: var(--dashboard-amber);
   --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
