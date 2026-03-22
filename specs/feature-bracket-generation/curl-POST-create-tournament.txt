@@ -1,0 +1,24 @@
+curl -X POST http://localhost:3001/api/tournament \
+-H "Content-Type: application/json" \
+-d "{
+  \"name\": \"Torneo Testing End-to-End\",
+  \"numberOfCourts\": 2,
+  \"stages\": [
+    {
+      \"order\": 1,
+      \"type\": \"GROUP_STAGE\",
+      \"config\": {
+        \"groupsOf4\": 1,
+        \"groupsOf3\": 1,
+        \"teamsAdvancingPerGroup\": 2
+      }
+    },
+    {
+      \"order\": 2,
+      \"type\": \"KNOCKOUT_STAGE\",
+      \"config\": {
+        \"startingRound\": \"SEMIFINALS\"
+      }
+    }
+  ]
+}"

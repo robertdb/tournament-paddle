@@ -25,7 +25,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Main App Routes soon to be mounted here
 const teamRoutes = require('./src/routes/team.routes');
+const tournamentRoutes = require('./src/routes/tournament.routes');
+
 app.use('/api/teams', teamRoutes);
+app.use('/api/tournament', tournamentRoutes);
 
 app.get('/ping', (req, res) => {
     res.json({ status: 'success', message: 'Pong!' });

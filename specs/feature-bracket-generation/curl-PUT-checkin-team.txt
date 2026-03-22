@@ -1,0 +1,2 @@
+# Reemplazar <TEAM_ID> con el UUID retornado en el POST de cada equipo o guardarlos en variables de bash.
+curl -X PUT http://localhost:3001/api/teams/<TEAM_ID> -H "Content-Type: application/json" -d "{\"checked_in\": true}"

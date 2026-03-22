@@ -1,0 +1,2 @@
+# Reemplazar <MATCH_ID> con el UUID devuelto por la lista de partidos
+curl -X GET http://localhost:3001/api/tournament/matches/<MATCH_ID>
