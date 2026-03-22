@@ -1,8 +1,8 @@
 openapi: 3.0.0
 info:
-  title: Padel Tournament API - Precarga
-  version: 1.0.0
-  description: "API para la precarga manual de equipos participantes y gestión de check-in."
+  title: Padel Tournament API
+  version: 1.1.0
+  description: "API para la gestión integral de un torneo único de Pádel, desde la precarga de equipos hasta la visualización de llaves eliminatorias."
 servers:
   - url: http://localhost:3001
     description: Servidor de desarrollo local
@@ -10,11 +10,8 @@ paths:
   /api/teams:
     post:
       summary: Precargar un nuevo equipo
-      description: "Recibe los datos del formulario de alta manual. El equipo se crea por defecto con 'checked_in: false', estado 'preloaded' y sin fecha de check-in. Devuelve el equipo guardado o error si es inválido."
-
-
       tags:
-        - Precarga
+        - Equipos
       requestBody:
         required: true
         content:
@@ -28,17 +25,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TeamResponse"
-        "400":
-          description: "Error de validación (ej. Categoría fuera de rango, teléfono duplicado)."
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
     get:
       summary: Obtener todos los equipos precargados
-      description: "Devuelve el listado completo de equipos registrados."
       tags:
-        - Precarga
+        - Equipos
       responses:
         "200":
           description: "Lista de equipos obtenida con éxito."
@@ -50,9 +40,9 @@ paths:
                   $ref: "#/components/schemas/TeamResponse"
   /api/teams/{id}:
     put:
-      summary: Actualizar un equipo (Edición o Check-in)
+      summary: Actualizar un equipo
       tags:
-        - Precarga
+        - Equipos
       parameters:
         - in: path
           name: id
@@ -64,27 +54,78 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                playerA:
-                  type: object
-                  properties:
-                    name: { type: string }
-                    category: { type: integer }
-                playerB:
-                  type: object
-                  properties:
-                    name: { type: string }
-                    category: { type: integer }
-                contactPhone: { type: string }
-                checked_in: { type: boolean }
+              $ref: "#/components/schemas/UpdateTeamRequest"
       responses:
         "200":
           description: "Equipo actualizado"
+
+  /api/tournament:
+    post:
+      summary: Crear un nuevo torneo
+      description: "Genera la estructura del torneo, grupos y partidos placeholders."
+      tags:
+        - Torneo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTournamentRequest"
+      responses:
+        "201":
+          description: "Torneo creado con éxito."
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TeamResponse"
+                type: object
+                properties:
+                  message: { type: string }
+    get:
+      summary: Ver resumen del torneo (Etapas, Grupos y Equipos)
+      tags:
+        - Torneo
+      responses:
+        "200":
+          description: "Visión general del torneo."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentOverviewResponse"
+
+  /api/tournament/matches:
+    get:
+      summary: Listar todos los partidos del torneo
+      tags:
+        - Partidos
+      responses:
+        "200":
+          description: "Lista de todos los enfrentamientos."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchResponse"
+
+  /api/tournament/matches/{id}:
+    get:
+      summary: Ver detalle de un partido
+      tags:
+        - Partidos
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: "Información detallada del partido."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchResponse"
 
 components:
   schemas:
@@ -95,15 +136,15 @@ components:
         playerA: { $ref: "#/components/schemas/PlayerSchema" }
         playerB: { $ref: "#/components/schemas/PlayerSchema" }
         contactPhone: { type: string }
-      example:
-        playerA:
-          name: "Juan Pérez"
-          category: 5
-        playerB:
-          name: "Martín López"
-          category: 4
-        contactPhone: "1155554444"
 
+    UpdateTeamRequest:
+      type: object
+      properties:
+        playerA: { $ref: "#/components/schemas/PlayerSchema" }
+        playerB: { $ref: "#/components/schemas/PlayerSchema" }
+        contactPhone: { type: string }
+        checked_in: { type: boolean }
+        groupId: { type: string, format: uuid }
 
     PlayerSchema:
       type: object
@@ -119,27 +160,77 @@ components:
         playerB: { $ref: "#/components/schemas/PlayerSchema" }
         contactPhone: { type: string }
         status: { type: string, enum: [preloaded, checked_in] }
-        checked_in: { type: boolean, default: false }
-        checkedInAt: { type: string, format: date-time, nullable: true }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-      example:
-        id: "550e8400-e29b-41d4-a716-446655440000"
-        playerA:
-          name: "Juan Pérez"
-          category: 5
-        playerB:
-          name: "Martín López"
-          category: 4
-        contactPhone: "1155554444"
-        status: "preloaded"
-        checked_in: false
-        checkedInAt: null
-        createdAt: "2026-03-21T18:00:00Z"
-        updatedAt: "2026-03-21T18:00:00Z"
+        checked_in: { type: boolean }
+        groupId: { type: string, format: uuid, nullable: true }
 
+    CreateTournamentRequest:
+      type: object
+      required: [name, stages]
+      properties:
+        name: { type: string, example: "Torneo Verano 2026" }
+        numberOfCourts: { type: integer, example: 3, default: 2 }
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/StageConfigSchema"
+
+    StageConfigSchema:
+      type: object
+      required: [order, type, config]
+      properties:
+        order: { type: integer }
+        type: { type: string, enum: [GROUP_STAGE, KNOCKOUT_STAGE] }
+        config: { type: object }
+
+    TournamentOverviewResponse:
+      type: object
+      properties:
+        name: { type: string }
+        stages:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              type: { type: string }
+              groups:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+                    teams:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/TeamMinimalResponse"
+
+    TeamMinimalResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        playerA: { properties: { name: { type: string } } }
+        playerB: { properties: { name: { type: string } } }
+
+    MatchResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        round: { type: string }
+        status: { type: string }
+        courtNumber: { type: integer, nullable: true }
+        startTime: { type: string, format: date-time, nullable: true }
+        placeholderA: { type: string, nullable: true }
+        placeholderB: { type: string, nullable: true }
+        advancesToMatchId: { type: string, format: uuid, nullable: true }
+        teamA:
+          { $ref: "#/components/schemas/TeamMinimalResponse", nullable: true }
+        teamB:
+          { $ref: "#/components/schemas/TeamMinimalResponse", nullable: true }
+        scoreA: { type: integer, nullable: true }
+        scoreB: { type: integer, nullable: true }
 
     ErrorResponse:
       type: object
       properties:
-        message: { type: string, example: "Error message detail" }
+        message: { type: string }

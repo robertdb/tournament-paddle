@@ -107,6 +107,9 @@ cd backend
 echo "📦 Instalando dependencias backend..."
 npm install
 
+echo "🗄️  Corriendo migraciones..."
+npx sequelize-cli db:migrate
+
 # Reiniciar backend con PM2
 echo "🔄 Reiniciando backend..."
 if pm2 describe $BACKEND_NAME > /dev/null 2>&1; then

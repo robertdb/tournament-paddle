@@ -1,0 +1,8 @@
+curl -X POST http://localhost:3001/api/teams -H "Content-Type: application/json" -d "{\"playerA\": {\"name\": \"Juan Perez\", \"category\": 5}, \"playerB\":{\"name\": \"Martin Lopez\", \"category\": 5}, \"contactPhone\": \"11111111\"}"
+curl -X POST http://localhost:3001/api/teams -H "Content-Type: application/json" -d "{\"playerA\": {\"name\": \"Beto Gomez\", \"category\": 5}, \"playerB\":{\"name\": \"Luis Garcia\", \"category\": 4}, \"contactPhone\": \"22222222\"}"
+curl -X POST http://localhost:3001/api/teams -H "Content-Type: application/json" -d "{\"playerA\": {\"name\": \"Carlos Rey\", \"category\": 6}, \"playerB\":{\"name\": \"Pedro Paz\", \"category\": 6}, \"contactPhone\": \"33333333\"}"
+curl -X POST http://localhost:3001/api/teams -H "Content-Type: application/json" -d "{\"playerA\": {\"name\": \"Diego Sol\", \"category\": 4}, \"playerB\":{\"name\": \"Enzo Mar\", \"category\": 5}, \"contactPhone\": \"44444444\"}"
+curl -X POST http://localhost:3001/api/teams -H "Content-Type: application/json" -d "{\"playerA\": {\"name\": \"Fede Cruz\", \"category\": 7}, \"playerB\":{\"name\": \"Gabi Luz\", \"category\": 7}, \"contactPhone\": \"55555555\"}"
+curl -X POST http://localhost:3001/api/teams -H "Content-Type: application/json" -d "{\"playerA\": {\"name\": \"Hugo Juez\", \"category\": 5}, \"playerB\":{\"name\": \"Ivan Flor\", \"category\": 5}, \"contactPhone\": \"66666666\"}"
+curl -X POST http://localhost:3001/api/teams -H "Content-Type: application/json" -d "{\"playerA\": {\"name\": \"Keko Van\", \"category\": 6}, \"playerB\":{\"name\": \"Leo Mar\", \"category\": 6}, \"contactPhone\": \"77777777\"}"
+

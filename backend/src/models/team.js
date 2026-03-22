@@ -4,7 +4,10 @@ const { Model, DataTypes } = require('sequelize');
 module.exports = (sequelize) => {
   class Team extends Model {
     static associate(models) {
-      // define association here
+      Team.belongsTo(models.Group, {
+        foreignKey: 'groupId',
+        as: 'group'
+      });
     }
   }
 
@@ -59,6 +62,10 @@ module.exports = (sequelize) => {
     },
     checkedInAt: {
       type: DataTypes.DATE,
+      allowNull: true
+    },
+    groupId: {
+      type: DataTypes.UUID,
       allowNull: true
     }
   }, {
